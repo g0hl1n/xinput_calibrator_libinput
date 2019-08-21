@@ -1,0 +1,32 @@
+#!/bin/bash
+
+set -e
+
+if [ -z "$1" ]; then
+        device="$(xinput_calibrator --list | head -n1 | sed 's/^Device \(.*\) id=.*$/\1/g' | tr -d \")"
+else
+        device="$1"
+fi
+echo "using device '${device}'"
+
+# reset libinput Calibration Matrix
+xinput set-prop "${device}" 'libinput Calibration Matrix' 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0
+
+# run xinput_calibrator
+tf="$(mktemp)"
+xinput_calibrator --device "${device}" --verbose 2>&1 | grep -e "width=" -e "height=" -e "click" > "${tf}"
+
+# parse results
+xres="$(grep "width=" "${tf}" | tail -1 | sed 's/^.*width=\([0-9]*\).*$/\1/g')"
+yres="$(grep "height=" "${tf}" | tail -1 | sed 's/^.*height=\([0-9]*\).*$/\1/g')"
+click0x="$(grep "click 0" "${tf}" | tail -1 | sed 's/.*X=\([0-9]*\).*$/\1/g')"
+click0y="$(grep "click 0" "${tf}" | tail -1 | sed 's/.*Y=\([0-9]*\).*$/\1/g')"
+click1x="$(grep "click 1" "${tf}" | tail -1 | sed 's/.*X=\([0-9]*\).*$/\1/g')"
+click1y="$(grep "click 1" "${tf}" | tail -1 | sed 's/.*Y=\([0-9]*\).*$/\1/g')"
+click2x="$(grep "click 2" "${tf}" | tail -1 | sed 's/.*X=\([0-9]*\).*$/\1/g')"
+click2y="$(grep "click 2" "${tf}" | tail -1 | sed 's/.*Y=\([0-9]*\).*$/\1/g')"
+click3x="$(grep "click 3" "${tf}" | tail -1 | sed 's/.*X=\([0-9]*\).*$/\1/g')"
+click3y="$(grep "click 3" "${tf}" | tail -1 | sed 's/.*Y=\([0-9]*\).*$/\1/g')"
+
+matrix="$(calc_libinput_matrix "${xres}" "${yres}" "${click0x}" "${click0y}" "${click1x}" "${click1y}" "${click2x}" "${click2y}" "${click3x}" "${click3y}")"
+echo "xinput set-prop '${device}' 'libinput Calibration Matrix' ${matrix}"
