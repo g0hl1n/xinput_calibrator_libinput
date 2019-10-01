@@ -2,6 +2,8 @@
 
 set -e
 
+swapxy="y"
+
 if [ -z "$1" ]; then
         device="$(xinput_calibrator --list | head -n1 | sed 's/^Device \(.*\) id=.*$/\1/g' | tr -d \")"
 else
@@ -10,7 +12,11 @@ fi
 echo "using device '${device}'"
 
 # reset libinput Calibration Matrix
-xinput set-prop "${device}" 'libinput Calibration Matrix' 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0
+if [ ${swapxy} == "y" ]; then
+        xinput set-prop "${device}" 'libinput Calibration Matrix' 0.0, -1.0, 1.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0
+else
+        xinput set-prop "${device}" 'libinput Calibration Matrix' 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0
+fi
 
 # run xinput_calibrator
 tf="$(mktemp)"
@@ -28,5 +34,5 @@ click2y="$(grep "click 2" "${tf}" | tail -1 | sed 's/.*Y=\([0-9]*\).*$/\1/g')"
 click3x="$(grep "click 3" "${tf}" | tail -1 | sed 's/.*X=\([0-9]*\).*$/\1/g')"
 click3y="$(grep "click 3" "${tf}" | tail -1 | sed 's/.*Y=\([0-9]*\).*$/\1/g')"
 
-matrix="$(calc_libinput_matrix "${xres}" "${yres}" "${click0x}" "${click0y}" "${click1x}" "${click1y}" "${click2x}" "${click2y}" "${click3x}" "${click3y}")"
+matrix="$(calc_libinput_matrix "${xres}" "${yres}" "${click0x}" "${click0y}" "${click1x}" "${click1y}" "${click2x}" "${click2y}" "${click3x}" "${click3y}" "${swapxy}")"
 echo "xinput set-prop '${device}' 'libinput Calibration Matrix' ${matrix}"
