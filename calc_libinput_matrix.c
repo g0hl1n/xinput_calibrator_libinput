@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
 	const double sevenEight = 7.0/8.0;
 
 	if (argc < 11) {
-		printf("usage: %s x-res y-res x0 y0 x1 y1 x2 y2 x3 y3\n", argv[0]);
+		printf("usage: %s x-res y-res x0 y0 x1 y1 x2 y2 x3 y3 [swap-x-y]\n", argv[0]);
 		return EXIT_FAILURE;
 	}
 
@@ -138,6 +138,10 @@ int main(int argc, char **argv) {
         int x3in = atoi(argv[9]);
         int y3in = atoi(argv[10]);
 
+	int swapxy = 0;
+	if (argc > 11)
+		swapxy = 1;
+
 	double x0 = (double)x0in / (double)xres;
 	double y0 = (double)y0in / (double)yres;
 	double x1 = (double)x1in / (double)xres;
@@ -151,6 +155,8 @@ int main(int argc, char **argv) {
 	gsl_matrix *A = gsl_matrix_alloc(row, col);
 	gsl_matrix *C = gsl_matrix_alloc(row, col);
 	gsl_matrix *R = gsl_matrix_alloc(3, 3);
+	gsl_matrix *S;
+	gsl_matrix *T;
 	gsl_matrix *A_pinv;
 
 	gsl_matrix_set(A, 0, 0, x0);
@@ -182,6 +188,25 @@ int main(int argc, char **argv) {
 	A_pinv = moore_penrose_pinv(A, rcond);
 	gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, C, A_pinv, 0.0, R);
 
+	if (swapxy) {
+		S = gsl_matrix_alloc(3, 3);
+
+		/* extra swapping x-y axes as requested */
+		gsl_matrix_set(S, 0, 0,  0.0);
+		gsl_matrix_set(S, 0, 1, -1.0);
+		gsl_matrix_set(S, 0, 2,  1.0);
+		gsl_matrix_set(S, 1, 0, -1.0);
+		gsl_matrix_set(S, 1, 1,  0.0);
+		gsl_matrix_set(S, 1, 2,  1.0);
+		gsl_matrix_set(S, 2, 0,  0.0);
+		gsl_matrix_set(S, 2, 1,  0.0);
+		gsl_matrix_set(S, 2, 2,  1.0);
+
+		T = R;
+		R = gsl_matrix_alloc(3, 3);
+		gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, T, S, 0.0, R);
+	}
+
         printf("%f, %f, %f, %f, %f, %f, %f, %f, %f\n",
                 gsl_matrix_get((const gsl_matrix *)R, 0, 0), gsl_matrix_get((const gsl_matrix *)R, 0, 1), gsl_matrix_get((const gsl_matrix *)R, 0, 2),
                 gsl_matrix_get((const gsl_matrix *)R, 1, 0), gsl_matrix_get((const gsl_matrix *)R, 1, 1), gsl_matrix_get((const gsl_matrix *)R, 1, 2),
@@ -191,5 +216,10 @@ int main(int argc, char **argv) {
 	gsl_matrix_free(C);
 	gsl_matrix_free(R);
 	gsl_matrix_free(A_pinv);
+
+	if (swapxy) {
+		gsl_matrix_free(S);
+		gsl_matrix_free(T);
+	}
 	return EXIT_SUCCESS;
 }
