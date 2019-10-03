@@ -10,7 +10,13 @@ if [ -e "$CALFILE" ]; then
                 rm "$CALFILE" 2>/dev/null || true
         else
                 echo "Using calibration data stored in $CALFILE"
-                . "$CALFILE" && exit 0
+                tmpf="$(mktemp)"
+                . "$CALFILE" > "${tmpf}" 2>&1
+                ret=$?
+                skip="$(grep -c "^unable to find device" "${tmpf}")"
+                rm "${tmpf}"
+                [ $ret -eq 0 ] && exit 0
+                [ "$skip" -gt 0 ] && exit 0
         fi
 fi
 
