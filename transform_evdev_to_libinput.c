@@ -22,11 +22,16 @@ float scaleAxis(float Cx, int to_max, int to_min, int from_max, int from_min)
 
 int main(int argc, char **argv)
 {
+	int swap_x_y = 0;
+	float tmp;
+
 	if (argc < 9) {
 		printf("usage: %s min_x, max_x, min_y, max_y, screen_px_x, screen_px_y, touch_px_x, "
-			   "touch_px_y\n",
+			   "touch_px_y swap_x_y\n",
 			   argv[0]);
 		return EXIT_FAILURE;
+	} else if (argc > 9) {
+		swap_x_y = 1;
 	}
 
 	int min_x		= atoi(argv[1]);
@@ -54,10 +59,21 @@ int main(int argc, char **argv)
 	float b = (float)li_min_y / (float)li_tot_y;
 	float c = -(float)screen_px_x / (float)li_tot_x;
 	float d = (float)li_min_x / (float)li_tot_x;
-	printf("xinput set-prop 'TOUCH_DEVICE' 'libinput Calibration Matrix' 0, %f, %f, %f, 0, %f, 0, "
-		   "0, 1;\n",
-		   a, b, c, d);
+
+	if (swap_x_y) {
+		tmp = a;
+		a	= c;
+		c	= tmp;
+
+		tmp = b;
+		b	= d;
+		d	= tmp;
+	}
+
+	// clang-format off
+	printf("xinput set-prop 'TOUCH_DEVICE' 'libinput Calibration Matrix' 0, %f, %f, %f, 0, %f, 0, 0, 1;\n", a, b, c, d);
 	printf("ENV{LIBINPUT_CALIBRATION_MATRIX}=\"0 %f %f %f 0 %f 0 0 1\"\n", a, b, c, d);
+	// clang-format on
 
 	return EXIT_SUCCESS;
 }
